@@ -19,10 +19,19 @@ $ npm run start
 $ npm run start:dev
 
 # docker
+# docker
 $ docker build -t naomesh-api .
+$ docker run -d -p 3000:3000 naomesh-api
 ```
 
+
 ## Push to docker hub
+
+```bash
+$ ./build_push_dockerio.sh
+```
+
+OU
 
 ```bash
 $ docker build -t naomesh-api .
