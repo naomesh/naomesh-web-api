@@ -2,9 +2,17 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
+import { ConfigModule } from '@nestjs/config';
+import * as process from 'process';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      envFilePath:
+        process.env.NODE_ENV === 'production'
+          ? '.env.production'
+          : '.env.development',
+    }),
     RabbitMQModule.forRoot(RabbitMQModule, {
       exchanges: [
         {
@@ -12,7 +20,7 @@ import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
           type: 'topic',
         },
       ],
-      uri: 'amqp://naomesh:naomesh@localhost:5672',
+      uri: process.env.RABBITMQ_URL,
       enableControllerDiscovery: true,
     }),
   ],
