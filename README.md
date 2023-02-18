@@ -24,6 +24,10 @@ $ docker build -t naomesh-api .
 $ docker run -d -p 3000:3000 naomesh-api
 ```
 
+## Documentation
+
+- `/api`: swagger document
+- `/api-json`: open-api spec
 
 ## Push to docker hub
 

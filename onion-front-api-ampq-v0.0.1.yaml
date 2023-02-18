@@ -1,0 +1,303 @@
+asyncapi: '2.6.0'
+info:
+  title: Onion - NestJS AMQP API
+  version: '0.0.1'
+  description: |
+    Communication entre l'orchestrateur onion et l'API NestJS de frontend.
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  production:
+    url: 127.0.0.1:5672
+    protocol: amqp
+    protocolVersion: 0.9.1
+    description: Docker container Rabbitmq broker
+    tags:
+      - name: 'env:production'
+        description: 'This environment is the live environment available for final users'
+
+defaultContentType: application/json
+
+channels:
+  orchestration.currentallocatednodes:
+    description: The topic where the list of current allocated nodes are published periodically
+    bindings:
+      amqp:
+        is: routingKey
+        queue:
+          name: allocatednodes
+          durable: false
+          exclusive: false
+          autoDelete: false
+          vhost: /
+        exchange:
+          name: amq.topic
+          type: topic
+          durable: false
+          autoDelete: false
+          vhost: /
+        bindingVersion: 0.2.0
+    subscribe:
+      summary: Inform about allotcated nodes
+      operationId: send_current_allocated_nodes
+      bindings:
+        amqp:
+          expiration: 60000 # 60s
+          userId: onion
+          priority: 10
+          deliveryMode: 1
+          #mandatory: false
+          timestamp: true
+          bindingVersion: 0.2.0
+      traits: []
+      message:
+        $ref: '#/components/messages/allocatedNodes'
+
+  orchestration.jobs.status:
+    description: The queue where job status are published periodically
+    bindings:
+      amqp:
+        is: routingKey
+        queue:
+          name: jobsstatus
+          durable: false
+          exclusive: false
+          autoDelete: false
+          vhost: /
+        exchange:
+          name: amq.direct
+          type: direct
+          durable: false
+          autoDelete: false
+          vhost: /
+        bindingVersion: 0.2.0
+    subscribe:
+      summary: Inform about current job status
+      operationId: send_job_status
+      bindings:
+        amqp:
+          expiration: 60000 # 60s
+          userId: onion
+          priority: 10
+          deliveryMode: 1
+          #mandatory: false
+          timestamp: true
+          bindingVersion: 0.2.0
+      message:
+        $ref: '#/components/messages/jobStatus'
+
+  orchestration.jobs.requests:
+    bindings:
+      amqp:
+        is: routingKey
+        queue:
+          name: jobsrequests
+          durable: false
+          exclusive: false
+          autoDelete: false
+          vhost: /
+        exchange:
+          name: amq.direct
+          type: direct
+          durable: false
+          autoDelete: false
+          vhost: /
+        bindingVersion: 0.2.0
+    publish:
+      operationId: receive_job_request
+      bindings:
+        amqp:
+          expiration: 60000 # 60s
+          userId: front-api
+          priority: 10
+          deliveryMode: 1
+          #mandatory: false
+          timestamp: true
+          ack: true
+          bindingVersion: 0.2.0
+      message:
+        $ref: '#/components/messages/jobRequests'
+
+  orchestration.jobs.finished:
+    bindings:
+      amqp:
+        is: routingKey
+        queue:
+          name: jobsfinished
+          durable: false
+          exclusive: false
+          autoDelete: false
+          vhost: /
+        exchange:
+          name: amq.direct
+          type: direct
+          durable: false
+          autoDelete: false
+          vhost: /
+        bindingVersion: 0.2.0
+    subscribe:
+      bindings:
+        amqp:
+          expiration: 60000 # 60s
+          userId: onion
+          priority: 10
+          deliveryMode: 1
+          #mandatory: false
+          timestamp: true
+          bindingVersion: 0.2.0
+      operationId: send_job_finished
+      message:
+        $ref: '#/components/messages/jobFinished'
+
+components:
+  messages:
+    allocatedNodes:
+      name: allocatedNodes
+      title: List of allocated nodes
+      summary: A list of current allocated nodes
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/amqp'
+      payload:
+        $ref: '#/components/schemas/allocatedNodesPayload'
+    jobStatus:
+      name: jobStatus
+      title: Job status publish
+      summary: A list of all job status
+      traits:
+        - $ref: '#/components/messageTraits/amqp'
+      payload:
+        $ref: '#/components/schemas/jobStatusPayload'
+    jobRequests:
+      name: jobRequests
+      title: Request a photogrammetry job
+      summary: Request a photogrammetry job to the onion orchestrator
+      traits:
+        - $ref: '#/components/messageTraits/amqp'
+      payload:
+        $ref: '#/components/schemas/jobRequestPayload'
+    jobFinished:
+      name: jobFinished
+      title: Job finished message
+      summary: Sent when a job is finished
+      traits:
+        - $ref: '#/components/messageTraits/amqp'
+      payload:
+        $ref: '#/components/schemas/jobFinishedPayload'
+
+  schemas:
+    allocatedNodesPayload:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            type: string
+            description: Node id
+            example: ecotype-25_pdu-Z1.2
+    jobStatusPayload:
+      type: object
+      properties:
+        number_of_running_jobs:
+          type: integer
+          example: 3
+        jobs:
+          type: array
+          items:
+            type: object
+            properties:
+              job_id:
+                type: string
+              state:
+                type: string
+                enum:
+                  - running
+                  - paused
+                  - failed
+              last_paused_date:
+                type: integer
+                description: Timestamp in ms
+                example: 1676285072739
+              last_started_date:
+                type: integer
+                description: Timestamp in ms
+                example: 1676285072739
+              step_idx:
+                type: integer
+                example: 0
+              pictures_quantity:
+                type: integer
+                example: 10
+              node_id:
+                type: string
+                example: ecotype-25_pdu-Z1.2
+              politic:
+                $ref: '#/components/schemas/politic'
+              consumption:
+                type: number
+                description: Current job consumption in watts
+                example: 100
+              pictures_obj_key:
+                type: string
+                example: /{job_id}/uploads
+                description: S3 folder pictures obj key
+    jobRequestPayload:
+      type: object
+      properties:
+        job_id:
+          type: string
+        pictures_obj_key:
+          type: string
+          description: S3 folder pictures obj key
+          example: /{job_id}/uploads
+        politic:
+          $ref: '#/components/schemas/politic'
+    jobFinishedPayload:
+      type: object
+      properties:
+        job_id:
+          type: string
+        node_uses:
+          type: array
+          items:
+            type: object
+            properties:
+              start_time:
+                type: integer
+                example: 1676285072739
+              end_time:
+                type: integer
+                example: 1676285072739
+              node_id:
+                type: string
+                example: ecotype-25_pdu-Z1.2
+        model_obj_key:
+          type: string
+          example: /{job_id}/results/model.obj
+        texture_obj_key:
+          example: /{job_id}/results/texture
+          type: string
+        politic:
+          $ref: '#/components/schemas/politic'
+
+    politic:
+      type: object
+      properties:
+        quality:
+          type: string
+          enum:
+            - good
+            - bad
+        energy:
+          type: string
+          enum:
+            - green
+            - bypass
+  messageTraits:
+    amqp:
+      bindings:
+        amqp:
+          contentEncoding: UTF-8
+          bindingVersion: 0.2.0

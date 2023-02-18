@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
+import { EventsModule } from './events/events.module';
+import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
-import { ConfigModule } from '@nestjs/config';
+import { HttpModule } from '@nestjs/axios';
 import * as process from 'process';
 
 @Module({
@@ -23,6 +25,8 @@ import * as process from 'process';
       uri: process.env.RABBITMQ_URL,
       enableControllerDiscovery: true,
     }),
+    HttpModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
