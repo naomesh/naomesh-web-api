@@ -4,6 +4,7 @@ import {
   WebSocketGateway,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  WebSocketServer,
 } from '@nestjs/websockets';
 import { Server as IoServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
@@ -19,9 +20,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   protected ioServer: IoServer;
   clients: { [client_id: string]: any } = {};
 
-  constructor(protected httpServer: HttpServer) {
-    this.ioServer = new IoServer(httpServer);
-  }
+  @WebSocketServer()
+  server: IoServer;
 
   private logger = new Logger('AppGateway');
 
@@ -38,6 +38,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   emitValuesForAll(topic, cb) {
+    this.logger.log(`Received message from topic [${topic}]`);
     for (const [id, client] of Object.entries(this.clients)) {
       this.logger.log(`Emitted event to '${id}' on the topic '${topic}'`);
       client.emit(topic, cb());
@@ -45,45 +46,33 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @RabbitRPC({
-    exchange: 'direct-exchange',
-    routingKey: 'routingKey',
-    queue: 'rpc-queue',
-    queueOptions: {
-      channel: 'jobsstatus',
-    },
+    exchange: 'amq.direct',
+    routingKey: 'orchestration.jobs.status',
+    queue: 'jobsstatus',
   })
   public async jobsStatusHandler(msg: JobStatusPayload) {
-    console.log('jobsStatusHandler', msg);
     this.emitValuesForAll('jobsstatus', () => {
       return msg;
     });
   }
 
   @RabbitRPC({
-    exchange: 'direct-exchange',
-    routingKey: 'routingKey',
-    queue: 'rpc-queue',
-    queueOptions: {
-      channel: 'jobsfinished',
-    },
+    exchange: 'amq.direct',
+    routingKey: 'orchestration.jobs.finished',
+    queue: 'jobsfinished',
   })
   public async jobsFinishedHandler(msg: JobFinishedPayload) {
-    console.log('jobsFinishedHandler', msg);
     this.emitValuesForAll('jobsfinished', () => {
       return msg;
     });
   }
 
   @RabbitRPC({
-    exchange: 'direct-exchange',
-    routingKey: 'routingKey',
-    queue: 'rpc-queue',
-    queueOptions: {
-      channel: 'allocatednodes',
-    },
+    exchange: 'amq.topic',
+    routingKey: 'orchestration.currentallocatednodes',
+    queue: 'allocatednodes',
   })
   public async allocatedNodesHandler(msg: AllocatedNodesPayload) {
-    console.log('allocatedNodesHandler', msg);
     this.emitValuesForAll('allocatednodes', () => {
       return msg;
     });

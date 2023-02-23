@@ -25,9 +25,9 @@ import * as process from 'process';
       uri: process.env.RABBITMQ_URL,
       enableControllerDiscovery: true,
     }),
-    HttpModule,
+    EventsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, EventsModule],
+  providers: [AppService],
 })
 export class AppModule {}

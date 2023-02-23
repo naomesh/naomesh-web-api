@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
 import * as process from 'process';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -7,8 +6,6 @@ const Minio = require('minio');
 
 @Injectable()
 export class AppService {
-  constructor(private readonly httpService: HttpService) {}
-
   /**
    * Async wrapper to upload some files in a bucket
    * @param minioClient
