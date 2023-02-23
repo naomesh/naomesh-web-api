@@ -1,5 +1,6 @@
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
 import { Logger } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 import {
   WebSocketGateway,
   OnGatewayConnection,
@@ -7,7 +8,7 @@ import {
   WebSocketServer,
   OnGatewayInit,
 } from '@nestjs/websockets';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 
 import {
   JobStatusPayload,
@@ -15,12 +16,10 @@ import {
   AllocatedNodesPayload,
 } from '../app.models';
 
-@WebSocketGateway(4000,{ transports: ['websocket'] })
+@WebSocketGateway(4000, { transports: ['websocket'] })
 export class EventsGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
 {
-  clients: { [client_id: string]: any } = {};
-
   afterInit(server: any) {
     this.logger.log('WebSocketGateway Initialized');
   }
@@ -32,22 +31,15 @@ export class EventsGateway
 
   handleConnection(client) {
     this.logger.log('New client connected');
-    this.clients[client.id] = client;
-
-    client.emit('connection', 'Successfully connected to server');
   }
 
   handleDisconnect(client) {
-    delete this.clients[client.id];
     this.logger.log('Client disconnected');
   }
 
   emitValuesForAll(topic, cb) {
-    // this.logger.log(`Received message from topic [${topic}]`);
-    for (const [id, client] of Object.entries(this.clients)) {
-      this.logger.log(`Emitted event to '${id}' on the topic '${topic}'`);
-      client.emit(topic, cb());
-    }
+    this.logger.log(`Emitted event on the topic '${topic}'`);
+    this.server.emit(topic, cb());
   }
 
   @RabbitRPC({
