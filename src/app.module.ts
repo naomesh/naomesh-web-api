@@ -26,9 +26,8 @@ import * as process from 'process';
       enableControllerDiscovery: true,
     }),
     HttpModule,
-    EventsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, EventsModule],
 })
 export class AppModule {}

@@ -2,22 +2,45 @@ import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
 import { Logger } from '@nestjs/common';
 import {
   WebSocketGateway,
-  WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
+import { Server as IoServer } from 'socket.io';
+import { Server as HttpServer } from 'http';
 
-@WebSocketGateway(4001, { transport: ['websocket'] })
+import {
+  JobStatusPayload,
+  JobFinishedPayload,
+  AllocatedNodesPayload,
+} from '../app.models';
+
+@WebSocketGateway()
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer()
-  server;
+  protected ioServer: IoServer;
   clients: { [client_id: string]: any } = {};
+
+  constructor(protected httpServer: HttpServer) {
+    this.ioServer = new IoServer(httpServer);
+  }
 
   private logger = new Logger('AppGateway');
 
-  emitValuesForAll(cb) {
+  handleConnection(client) {
+    this.logger.log('New client connected');
+    this.clients[client.id] = client;
+
+    client.emit('connection', 'Successfully connected to server');
+  }
+
+  handleDisconnect(client) {
+    delete this.clients[client.id];
+    this.logger.log('Client disconnected');
+  }
+
+  emitValuesForAll(topic, cb) {
     for (const [id, client] of Object.entries(this.clients)) {
-      client.emit(cb());
+      this.logger.log(`Emitted event to '${id}' on the topic '${topic}'`);
+      client.emit(topic, cb());
     }
   }
 
@@ -29,9 +52,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       channel: 'jobsstatus',
     },
   })
-  public async jobsStatusHandler(msg: any) {
+  public async jobsStatusHandler(msg: JobStatusPayload) {
     console.log('jobsStatusHandler', msg);
-    this.emitValuesForAll(() => {
+    this.emitValuesForAll('jobsstatus', () => {
       return msg;
     });
   }
@@ -44,9 +67,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       channel: 'jobsfinished',
     },
   })
-  public async jobsFinishedHandler(msg: any) {
+  public async jobsFinishedHandler(msg: JobFinishedPayload) {
     console.log('jobsFinishedHandler', msg);
-    this.emitValuesForAll(() => {
+    this.emitValuesForAll('jobsfinished', () => {
       return msg;
     });
   }
@@ -59,21 +82,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
       channel: 'allocatednodes',
     },
   })
-  public async allocatedNodesHandler(msg: any) {
+  public async allocatedNodesHandler(msg: AllocatedNodesPayload) {
     console.log('allocatedNodesHandler', msg);
-    this.emitValuesForAll(() => {
+    this.emitValuesForAll('allocatednodes', () => {
       return msg;
     });
-  }
-  handleConnection(client) {
-    this.logger.log('New client connected');
-    this.clients[client.id] = client;
-
-    client.emit('connection', 'Successfully connected to server');
-  }
-
-  handleDisconnect(client) {
-    delete this.clients[client.id];
-    this.logger.log('Client disconnected');
   }
 }
