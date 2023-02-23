@@ -5,6 +5,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketServer,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 
@@ -14,9 +15,15 @@ import {
   AllocatedNodesPayload,
 } from '../app.models';
 
-@WebSocketGateway({ path: '/subscribe', transports: ['websocket'] })
-export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+@WebSocketGateway({ transports: ['websocket'] })
+export class EventsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
+{
   clients: { [client_id: string]: any } = {};
+
+  afterInit(server: any) {
+    this.logger.log('WebSocketGateway Initialized');
+  }
 
   @WebSocketServer()
   server: Server;
