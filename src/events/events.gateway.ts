@@ -15,7 +15,7 @@ import {
   AllocatedNodesPayload,
 } from '../app.models';
 
-@WebSocketGateway({ transports: ['websocket'] })
+@WebSocketGateway(4000,{ transports: ['websocket'] })
 export class EventsGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
 {
