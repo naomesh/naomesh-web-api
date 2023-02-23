@@ -6,8 +6,7 @@ import {
   OnGatewayDisconnect,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Server as IoServer } from 'socket.io';
-import { Server as HttpServer } from 'http';
+import { Server } from 'socket.io';
 
 import {
   JobStatusPayload,
@@ -15,13 +14,12 @@ import {
   AllocatedNodesPayload,
 } from '../app.models';
 
-@WebSocketGateway()
+@WebSocketGateway({ path: '/subscribe', transports: ['websocket'] })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  protected ioServer: IoServer;
   clients: { [client_id: string]: any } = {};
 
   @WebSocketServer()
-  server: IoServer;
+  server: Server;
 
   private logger = new Logger('AppGateway');
 
@@ -38,7 +36,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   emitValuesForAll(topic, cb) {
-    this.logger.log(`Received message from topic [${topic}]`);
+    // this.logger.log(`Received message from topic [${topic}]`);
     for (const [id, client] of Object.entries(this.clients)) {
       this.logger.log(`Emitted event to '${id}' on the topic '${topic}'`);
       client.emit(topic, cb());

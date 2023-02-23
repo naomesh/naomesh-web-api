@@ -4,7 +4,6 @@ import { EventsModule } from './events/events.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
-import { HttpModule } from '@nestjs/axios';
 import * as process from 'process';
 
 @Module({
